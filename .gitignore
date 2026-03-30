@@ -1,0 +1,28 @@
+# Secrets - NEVER COMMIT THESE
+.env
+config/credentials.json
+config/oauth_client.json
+config/token.pickle
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+frontend/build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
