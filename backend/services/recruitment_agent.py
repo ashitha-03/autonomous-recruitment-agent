@@ -232,7 +232,7 @@ Write a professional explanation of why this candidate was {'shortlisted' if sco
 
     # ── Try Vertex AI Gemini first ─────────────────────────────────────────────
     try:
-        from google import genai
+        import google.generativeai as genai
         client = genai.Client(
             vertexai=True,
             project=settings.google_cloud_project_id,

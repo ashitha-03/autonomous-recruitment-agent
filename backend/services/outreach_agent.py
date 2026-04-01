@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timedelta
-from google import genai
+import google.generativeai as genai
 from google.genai import types
 
 from backend.services.gmail import send_shortlist_email, send_rejection_email
