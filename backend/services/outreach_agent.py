@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta
 import google.generativeai as genai
-from google.genai import types
+
 
 from backend.services.gmail import send_shortlist_email, send_rejection_email
 from backend.services.calendar import create_interview_event
