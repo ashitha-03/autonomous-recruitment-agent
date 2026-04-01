@@ -121,10 +121,28 @@ def extract_education(text: str) -> str | None:
 def extract_linkedin(text: str) -> str | None:
     match = re.search(r'linkedin\.com/in/[\w\-]+', text.lower())
     return f"https://{match.group(0)}" if match else None
+def is_resume(text: str) -> bool:
+    text = text.lower()
 
+    keywords = [
+        "education", "skills", "experience",
+        "projects", "internship", "summary"
+    ]
 
-def parse_resume(file_bytes: bytes, filename: str) -> tuple[str, CandidateBase]:
+    count = 0
+    for word in keywords:
+        if word in text:
+            count += 1
+
+    return count >= 3
+
+def parse_resume(file_bytes: bytes, filename: str) -> tuple[str, CandidateBase | None]:
     resume_text = extract_text(file_bytes, filename)
+
+    # 🚨 ADD THIS VALIDATION
+    if not is_resume(resume_text):
+        return resume_text, None  # reject non-resume
+
     candidate = CandidateBase(
         name=extract_name(resume_text),
         email=extract_email(resume_text),
@@ -136,4 +154,5 @@ def parse_resume(file_bytes: bytes, filename: str) -> tuple[str, CandidateBase]:
         education=extract_education(resume_text),
         resume_text=resume_text,
     )
+
     return resume_text, candidate
