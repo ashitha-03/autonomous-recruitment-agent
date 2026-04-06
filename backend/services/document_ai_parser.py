@@ -6,6 +6,8 @@ from google.api_core.client_options import ClientOptions
 from google.cloud import documentai
 from backend.models.schemas import CandidateBase
 from config.settings import settings
+import json
+from google.oauth2 import service_account
 
 # Document AI location — must be 'us' or 'eu'
 DOCAI_LOCATION = "us"
@@ -31,14 +33,31 @@ KNOWN_SKILLS = [
     "excel", "powerpoint", "tableau", "power bi",
 ]
 
-
 def _get_docai_client():
-    """Returns Document AI client."""
+    """Returns Document AI client with credentials (Render-safe)."""
+    
     opts = ClientOptions(
         api_endpoint=f"{DOCAI_LOCATION}-documentai.googleapis.com"
     )
-    return documentai.DocumentProcessorServiceClient(client_options=opts)
 
+    # 🔥 Load credentials from ENV
+    if settings.google_credentials_json:
+        try:
+            creds_dict = json.loads(settings.google_credentials_json)
+            credentials = service_account.Credentials.from_service_account_info(creds_dict)
+
+            print("✅ Using ENV credentials for Document AI")
+
+            return documentai.DocumentProcessorServiceClient(
+                credentials=credentials,
+                client_options=opts
+            )
+        except Exception as e:
+            print("❌ Failed to load credentials:", e)
+
+    # ✅ fallback (VERY IMPORTANT)
+    print("⚠️ Falling back to default credentials")
+    return documentai.DocumentProcessorServiceClient(client_options=opts)
 def _get_or_create_processor() -> str:
     # Check .env first
     if settings.document_ai_processor_id:
