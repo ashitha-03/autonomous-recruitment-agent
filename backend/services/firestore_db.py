@@ -3,29 +3,42 @@ backend/services/firestore_db.py
 All database operations using Firebase Firestore.
 Database: ashitha-month2
 """
+
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials
+from google.cloud.firestore_v1 import Client
+from google.oauth2 import service_account
+
 from backend.models.schemas import Candidate, JobDescription, CandidateScore
 import uuid
 from datetime import datetime
+
 
 def _get_db():
     """Returns Firestore client with correct database name."""
     import os
     import json
 
+    firebase_creds = os.getenv("FIREBASE_CREDENTIALS")
+
+    if not firebase_creds:
+        raise ValueError("FIREBASE_CREDENTIALS not set")
+
+    cred_dict = json.loads(firebase_creds)
+
+    # Initialize Firebase Admin (only once)
     if not firebase_admin._apps:
-        firebase_creds = os.getenv("FIREBASE_CREDENTIALS")
-
-        if not firebase_creds:
-            raise ValueError("FIREBASE_CREDENTIALS not set")
-
-        cred_dict = json.loads(firebase_creds)
-
         cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred)
 
-    return firestore.client()
+    # Create Firestore client for custom database
+    creds = service_account.Credentials.from_service_account_info(cred_dict)
+
+    return Client(
+        project=creds.project_id,
+        credentials=creds,
+        database="ashitha-month2"   # ✅ YOUR ACTUAL DB
+    )
 
 
 # ─── Job Description Operations ───────────────────────────────────────────────
@@ -33,6 +46,7 @@ def _get_db():
 def save_job_description(jd: JobDescription) -> str:
     db = _get_db()
     jd_id = jd.jd_id or str(uuid.uuid4())
+
     data = {
         "jd_id": jd_id,
         "role_title": jd.role_title,
@@ -49,6 +63,7 @@ def save_job_description(jd: JobDescription) -> str:
         "company_name": jd.company_name or "",
         "created_at": datetime.utcnow().isoformat(),
     }
+
     db.collection("job_descriptions").document(jd_id).set(data)
     return jd_id
 
@@ -61,10 +76,14 @@ def get_job_description(jd_id: str) -> dict | None:
 
 def list_job_descriptions() -> list[dict]:
     db = _get_db()
-    docs = db.collection("job_descriptions").order_by(
-        "created_at", direction=firestore.Query.DESCENDING
-    ).stream()
-    return [doc.to_dict() for doc in docs]
+
+    docs = db.collection("job_descriptions").stream()
+    jds = [doc.to_dict() for doc in docs]
+
+    # Sort manually (safe for all versions)
+    jds.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+    return jds
 
 
 def delete_job_description(jd_id: str):
@@ -82,6 +101,7 @@ def update_job_description(jd_id: str, data: dict):
 def save_candidate(candidate: Candidate, score: CandidateScore | None = None) -> str:
     db = _get_db()
     candidate_id = candidate.candidate_id or str(uuid.uuid4())
+
     data = {
         "candidate_id": candidate_id,
         "jd_id": candidate.jd_id or None,
@@ -108,6 +128,7 @@ def save_candidate(candidate: Candidate, score: CandidateScore | None = None) ->
         "scored_at": score.scored_at.isoformat() if score and score.scored_at else None,
         "created_at": datetime.utcnow().isoformat(),
     }
+
     db.collection("candidates").document(candidate_id).set(data)
     return candidate_id
 
@@ -115,19 +136,26 @@ def save_candidate(candidate: Candidate, score: CandidateScore | None = None) ->
 def candidate_exists(email: str, jd_id: str) -> bool:
     db = _get_db()
     import hashlib
+
     doc_id = hashlib.md5(f"{email}_{jd_id}".encode()).hexdigest()
     doc = db.collection("candidates").document(doc_id).get()
+
     return doc.exists
 
 
 def list_candidates(jd_id: str | None = None) -> list[dict]:
     db = _get_db()
+
     query = db.collection("candidates")
+
     if jd_id:
         query = query.where("jd_id", "==", jd_id)
+
     docs = query.stream()
     candidates = [doc.to_dict() for doc in docs]
+
     candidates.sort(key=lambda x: float(x.get("overall_score") or 0), reverse=True)
+
     return candidates
 
 
