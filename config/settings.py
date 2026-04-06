@@ -11,14 +11,14 @@ class Settings(BaseSettings):
 
     # Google Cloud
     google_cloud_project_id: str
-    google_application_credentials: str = "config/credentials.json"
+    google_application_credentials: Optional[str] = None
+    google_credentials_json: Optional[str] = None
+
     vertex_ai_location: str = "us-central1"
     vertex_ai_model: str = "gemini-2.5-flash"
     company_name: str = "Our Company"
 
-    company_name: str = "Our Company"
-    openrouter_api_key: str = ""
-
+    openrouter_api_key: Optional[str] = None
     document_ai_processor_id: str = ""
 
     # Gmail
@@ -32,10 +32,7 @@ class Settings(BaseSettings):
     interview_duration_minutes: int = 45
 
     # LinkedIn
-    
-    serp_api_key: Optional[str] = None   # ✅ ADD THIS
-
-    openrouter_api_key: Optional[str] = None
+    serp_api_key: Optional[str] = None
 
     # App
     secret_key: str = "change-me"
