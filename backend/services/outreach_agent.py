@@ -52,7 +52,7 @@ def run_outreach_for_jd(
             candidate_id = c.get("candidate_id")
             status = c.get("status")
 
-            if status == "Shortlisted" and not c.get("interview_scheduled"):
+            if status == "Shortlisted":
 
                 meet_link = ""
 
