@@ -58,18 +58,25 @@ def _parse_raw(raw: str) -> dict | None:
 
 def _try_vertex_ai(prompt: str) -> str | None:
     try:
-        print("🔹 Using Gemini API (fixed)")
+        print("🔹 Using Vertex AI Gemini")
 
-        genai.configure(api_key=settings.gemini_api_key)
+        import vertexai
+        from vertexai.generative_models import GenerativeModel
+        import os
 
-        model = genai.GenerativeModel("gemini-pro")
+        vertexai.init(
+            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+            location="us-central1"
+        )
+
+        model = GenerativeModel("gemini-2.5-flash")
 
         response = model.generate_content(prompt)
 
         return response.text.strip()
 
     except Exception as e:
-        print(f"⚠️ Gemini error: {str(e)[:80]}")
+        print(f"⚠️ Vertex AI error: {str(e)[:80]}")
         return None
 
 
