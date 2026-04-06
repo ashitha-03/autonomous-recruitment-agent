@@ -19,13 +19,25 @@ _context = {}
 
 
 def is_valid_resume(text: str) -> bool:
-    keywords = [
-        "experience", "education", "skills",
-        "projects", "internship", "work experience",
-        "technical skills", "summary"
+    text = text.lower()
+
+    required_sections = [
+        "experience",
+        "education",
+        "skills"
     ]
-    text_lower = text.lower()
-    return sum(1 for k in keywords if k in text_lower) >= 2
+
+    optional_sections = [
+        "project", "internship", "work experience", "technical skills"
+    ]
+
+    # Must contain ALL required sections
+    required_match = all(section in text for section in required_sections)
+
+    # Must contain at least ONE optional section
+    optional_match = any(section in text for section in optional_sections)
+
+    return required_match and optional_match
 
 
 # ── TOOL 1: PARSE RESUME ──────────────────────────────────────────────────────
@@ -77,20 +89,14 @@ def parse_resume_tool(filename: str) -> dict:
                 "is_resume": False,
                 "error": f"'{filename}' is not a valid resume"
             }
-
-        # ── Validate it's a resume ─────────────────────────────────────────────
-        resume_keywords = [
-            "experience", "education", "skills", "project", "internship",
-            "university", "college", "degree", "bachelor", "master",
-            "developer", "engineer", "analyst", "manager", "work"
-        ]
-        keyword_count = sum(1 for kw in resume_keywords if kw in resume_text.lower())
-
-        if keyword_count < 3:
+        # ✅ Extra safety: reject very small files
+        if len(resume_text.split()) < 100:
             return {
                 "is_resume": False,
-                "error": f"'{filename}' does not appear to be a resume (only {keyword_count} resume keywords found)"
+                "error": "File too small to be a valid resume"
             }
+
+       
 
         _context["resume_text"] = resume_text
         _context["candidate_base"] = candidate_base
@@ -109,6 +115,8 @@ def parse_resume_tool(filename: str) -> dict:
 
     except Exception as e:
         return {"error": str(e)}
+    
+    
 
 
 # ── TOOL 2: DUPLICATE CHECK ───────────────────────────────────────────────────
