@@ -4,7 +4,7 @@ import Login from "./pages/Login";
 import { generateJD, listJDs, uploadResumes, getCandidates, scrapeLinkedIn, runOutreachAgent } from "./services/api";
 import axios from "axios";
 
-const API = axios.create({ baseURL: "http://localhost:8000" });
+const API = axios.create({ baseURL: process.env.REACT_APP_BACKEND_URL });
 
 const TABS = ["Job Descriptions", "Upload Resumes", "Candidates", "LinkedIn"];
 
