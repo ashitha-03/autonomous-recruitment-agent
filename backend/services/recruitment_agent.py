@@ -262,16 +262,18 @@ Write a professional explanation of why this candidate was {'shortlisted' if sco
 
     # ── Try Vertex AI Gemini first ─────────────────────────────────────────────
     try:
-        import google.generativeai as genai
-        client = genai.Client(
-            vertexai=True,
+        import vertexai
+        from vertexai.generative_models import GenerativeModel
+
+        vertexai.init(
             project=settings.google_cloud_project_id,
             location=settings.vertex_ai_location,
         )
-        response = client.models.generate_content(
-            model=settings.vertex_ai_model,
-            contents=prompt,
-        )
+
+        model = GenerativeModel(settings.vertex_ai_model)
+
+        response = model.generate_content(prompt)
+
         explanation = response.text.strip()
         print(f"✅ Vertex AI explanation generated for {candidate.name}")
         return explanation
