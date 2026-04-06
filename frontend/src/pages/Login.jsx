@@ -1,4 +1,3 @@
-```javascript
 // frontend/src/pages/Login.jsx
 import { useState } from "react";
 
@@ -17,8 +16,7 @@ export default function Login({ onLogin }) {
     try {
       const form = new URLSearchParams();
       form.append("username", email.trim().toLowerCase());
-form.append("password", password.trim());
-    
+      form.append("password", password.trim());
 
       const res = await fetch(
         `${process.env.REACT_APP_BACKEND_URL}/auth/login`,
@@ -158,7 +156,6 @@ const styles = {
     minHeight: "100vh",
     fontFamily: "'Georgia', 'Times New Roman', serif",
   },
-
   left: {
     flex: 1,
     background: "linear-gradient(135deg, #0f1e3c 0%, #1a3a6b 60%, #0d2d5e 100%)",
@@ -208,7 +205,6 @@ const styles = {
     lineHeight: 1.7,
     margin: "0 0 32px",
   },
-
   right: {
     width: 480,
     background: "#fafaf8",
@@ -319,4 +315,3 @@ const styles = {
     display: "inline-block",
   },
 };
-```
