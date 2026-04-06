@@ -1,6 +1,7 @@
+```javascript
 // frontend/src/pages/Login.jsx
 import { useState } from "react";
-import axios from "axios";
+import { login } from "../services/api";   // ✅ FIXED (use API service)
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -14,13 +15,7 @@ export default function Login({ onLogin }) {
     setError("");
     setLoading(true);
     try {
-      const form = new URLSearchParams();
-      form.append("username", email);
-      form.append("password", password);
-
-      const res = await axios.post("/auth/login", form, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      });
+      const res = await login(email, password);   // ✅ FIXED (correct API call)
 
       const { access_token, user_name, user_email, user_role } = res.data;
       localStorage.setItem("token", access_token);
@@ -118,8 +113,6 @@ export default function Login({ onLogin }) {
               )}
             </button>
           </form>
-
-         
         </div>
       </div>
     </div>
@@ -133,7 +126,6 @@ const styles = {
     fontFamily: "'Georgia', 'Times New Roman', serif",
   },
 
-  // ── Left branding panel ──
   left: {
     flex: 1,
     background: "linear-gradient(135deg, #0f1e3c 0%, #1a3a6b 60%, #0d2d5e 100%)",
@@ -183,42 +175,7 @@ const styles = {
     lineHeight: 1.7,
     margin: "0 0 32px",
   },
-  pills: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  pill: {
-    background: "rgba(255,255,255,0.1)",
-    border: "1px solid rgba(255,255,255,0.15)",
-    color: "rgba(255,255,255,0.8)",
-    borderRadius: 20,
-    padding: "4px 14px",
-    fontSize: 12,
-    letterSpacing: "0.03em",
-  },
-  circle1: {
-    position: "absolute",
-    width: 400,
-    height: 400,
-    borderRadius: "50%",
-    border: "1px solid rgba(255,255,255,0.05)",
-    bottom: -150,
-    right: -150,
-    zIndex: 1,
-  },
-  circle2: {
-    position: "absolute",
-    width: 250,
-    height: 250,
-    borderRadius: "50%",
-    border: "1px solid rgba(240,192,64,0.1)",
-    top: -80,
-    right: 20,
-    zIndex: 1,
-  },
 
-  // ── Right form panel ──
   right: {
     width: 480,
     background: "#fafaf8",
@@ -328,23 +285,5 @@ const styles = {
   spinner: {
     display: "inline-block",
   },
-  hint: {
-    marginTop: 28,
-    background: "#f0f4ff",
-    border: "1px solid #dbeafe",
-    borderRadius: 8,
-    padding: "14px 16px",
-    fontSize: 12,
-    color: "#374151",
-    lineHeight: 1.8,
-    fontFamily: "system-ui, sans-serif",
-  },
-  code: {
-    background: "#e0e7ff",
-    borderRadius: 4,
-    padding: "1px 6px",
-    fontFamily: "monospace",
-    fontSize: 12,
-    color: "#1e3a8a",
-  },
 };
+```

@@ -41,7 +41,7 @@ const JDCard = ({ jd, onDelete, onEdit, onUploadResumes }) => {
 
   const downloadPDF = () => {
     const link = document.createElement("a");
-    link.href = `http://localhost:8000/jd/${jd.jd_id}/pdf`;
+    link.href = `${process.env.REACT_APP_BACKEND_URL}/jd/${jd.jd_id}/pdf`;
     link.download = `${jd.role_title.replace(/ /g, "_")}_JD.pdf`;
     link.click();
   };
