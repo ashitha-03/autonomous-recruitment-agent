@@ -17,6 +17,17 @@ from config.settings import settings
 _context = {}
 
 
+
+def is_valid_resume(text: str) -> bool:
+    keywords = [
+        "experience", "education", "skills",
+        "projects", "internship", "work experience",
+        "technical skills", "summary"
+    ]
+    text_lower = text.lower()
+    return sum(1 for k in keywords if k in text_lower) >= 2
+
+
 # ── TOOL 1: PARSE RESUME ──────────────────────────────────────────────────────
 def parse_resume_tool(filename: str) -> dict:
     """
@@ -53,8 +64,19 @@ def parse_resume_tool(filename: str) -> dict:
                 print(f"❌ pdfplumber also failed: {pdf_error}")
                 return {"error": f"All parsers failed: {str(pdf_error)}"}
 
+         # ❌ If no text extracted
         if not resume_text or len(resume_text.strip()) < 20:
-            return {"is_resume": False, "error": f"Could not extract text from '{filename}'"}
+            return {
+                "is_resume": False,
+                "error": f"Could not extract text from '{filename}'"
+            }
+
+# ✅ Validate resume content
+        if not is_valid_resume(resume_text):
+            return {
+                "is_resume": False,
+                "error": f"'{filename}' is not a valid resume"
+            }
 
         # ── Validate it's a resume ─────────────────────────────────────────────
         resume_keywords = [
@@ -365,6 +387,8 @@ def _run_pipeline(filename: str, jd_id: str) -> dict:
     name = parse_result.get("name", filename)
     parser_used = parse_result.get("parser_used", "unknown")
     print(f"✅ Parsed: {name} ({email}) via {parser_used}")
+
+    
 
     # ── Step 2: Duplicate Check ────────────────────────────────────────────────
     print("🔍 Step 2: Checking duplicate...")
