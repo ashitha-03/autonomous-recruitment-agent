@@ -1,7 +1,6 @@
 ```javascript
 // frontend/src/pages/Login.jsx
 import { useState } from "react";
-import { login } from "../services/api";   // ✅ FIXED (use API service)
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -14,16 +13,51 @@ export default function Login({ onLogin }) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    try {
-      const res = await login(email, password);   // ✅ FIXED (correct API call)
 
-      const { access_token, user_name, user_email, user_role } = res.data;
+    try {
+      const form = new URLSearchParams();
+      form.append("username", email);
+      form.append("password", password);
+
+      const res = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: form,
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || "Login failed");
+      }
+
+      const { access_token, user_name, user_email, user_role } = data;
+
       localStorage.setItem("token", access_token);
-      localStorage.setItem("user", JSON.stringify({ name: user_name, email: user_email, role: user_role }));
-      onLogin({ name: user_name, email: user_email, role: user_role });
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          name: user_name,
+          email: user_email,
+          role: user_role,
+        })
+      );
+
+      onLogin({
+        name: user_name,
+        email: user_email,
+        role: user_role,
+      });
+
     } catch (err) {
-      setError(err.response?.data?.detail || "Login failed. Check your credentials.");
+      setError(err.message || "Login failed. Check your credentials.");
     }
+
     setLoading(false);
   };
 
@@ -42,10 +76,8 @@ export default function Login({ onLogin }) {
           </h1>
           <p style={styles.subtext}>
             AI-powered recruitment pipeline <br />
-          
           </p>
-        
-          {/* Decorative circles */}
+
           <div style={styles.circle1} />
           <div style={styles.circle2} />
         </div>
@@ -69,7 +101,7 @@ export default function Login({ onLogin }) {
                   type="email"
                   placeholder="hr@company.com"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   autoFocus
                 />
@@ -85,13 +117,13 @@ export default function Login({ onLogin }) {
                   type={showPass ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
                 <button
                   type="button"
                   style={styles.eyeBtn}
-                  onClick={() => setShowPass(v => !v)}
+                  onClick={() => setShowPass((v) => !v)}
                   tabIndex={-1}
                 >
                   {showPass ? "🙈" : "👁"}
