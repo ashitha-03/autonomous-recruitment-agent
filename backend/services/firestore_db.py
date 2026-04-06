@@ -25,7 +25,7 @@ def _get_db():
         cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred)
 
-    return firestore.client()
+    return firestore.client(database_id='ashitha-month2')
 
 
 # ─── Job Description Operations ───────────────────────────────────────────────
