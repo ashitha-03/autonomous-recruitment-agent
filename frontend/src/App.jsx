@@ -196,7 +196,18 @@ export default function App() {
     location: "", employment_type: "Full-time", salary_range: ""
   });
 
-  useEffect(() => { if (user) listJDs().then(r => setJDs(r.data)).catch(() => {}); }, [user, tab]);
+useEffect(() => {
+  const fetchJDs = async () => {
+    try {
+      const res = await listJDs();
+      setJDs(res.data);
+    } catch (err) {
+      console.error("Failed to load JDs:", err);
+    }
+  };
+
+  fetchJDs(); // 🔥 always fetch on load
+}, []);
 
   const notify = (text, type = "success") => { setMsg({ text, type }); setTimeout(() => setMsg({ text: "", type: "" }), 4000); };
 
