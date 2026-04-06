@@ -65,7 +65,7 @@ def _try_vertex_ai(prompt: str) -> str | None:
         import os
 
         vertexai.init(
-            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+            project=settings.google_cloud_project_id,
             location="us-central1"
         )
 

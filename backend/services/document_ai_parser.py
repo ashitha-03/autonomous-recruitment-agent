@@ -40,23 +40,23 @@ def _get_docai_client():
         api_endpoint=f"{DOCAI_LOCATION}-documentai.googleapis.com"
     )
 
-    # 🔥 Load credentials from ENV
+    print("ENV LOADED:", bool(settings.google_credentials_json))
+
     if settings.google_credentials_json:
         try:
             creds_dict = json.loads(settings.google_credentials_json)
             credentials = service_account.Credentials.from_service_account_info(creds_dict)
 
-            print("✅ Using ENV credentials for Document AI")
+            print("✅ USING ENV DOC AI")
 
             return documentai.DocumentProcessorServiceClient(
                 credentials=credentials,
                 client_options=opts
             )
         except Exception as e:
-            print("❌ Failed to load credentials:", e)
+            print("❌ JSON ERROR:", e)
 
-    # ✅ fallback (VERY IMPORTANT)
-    print("⚠️ Falling back to default credentials")
+    print("⚠️ FALLBACK DOC AI")
     return documentai.DocumentProcessorServiceClient(client_options=opts)
 def _get_or_create_processor() -> str:
     # Check .env first
