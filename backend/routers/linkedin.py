@@ -57,7 +57,7 @@ async def scrape_and_score(request: LinkedInRequest):
 
     # 🔹 Scrape LinkedIn
     try:
-        profiles = scrape_linkedin_profiles(search_keywords, max_profiles)
+        profiles = scrape_linkedin_profiles(search_keywords, jd_id, max_profiles)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
 
