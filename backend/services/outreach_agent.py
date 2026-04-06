@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timedelta
-import google.generativeai as genai
+
 
 
 from backend.services.gmail import send_shortlist_email, send_rejection_email
@@ -52,7 +52,7 @@ def run_outreach_for_jd(
             candidate_id = c.get("candidate_id")
             status = c.get("status")
 
-            if status == "Shortlisted":
+            if status == "Shortlisted" and not c.get("interview_scheduled"):
 
                 meet_link = ""
 
@@ -95,6 +95,12 @@ def run_outreach_for_jd(
 
                 # ✅ 4. Update status
                 update_candidate_status(candidate_id, "Interview Scheduled")
+                from backend.services.firestore_db import _get_db
+
+                db = _get_db()
+                db.collection("candidates").document(candidate_id).update({
+                "interview_scheduled": True
+                })
 
                 results.append({
                     "name": c["name"],
