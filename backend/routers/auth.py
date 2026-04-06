@@ -66,13 +66,22 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
 
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = USERS_DB.get(form_data.username)
-    if not user or form_data.password != user["password"]:
+    print("USERNAME RECEIVED:", form_data.username)
+    print("PASSWORD RECEIVED:", form_data.password)
+
+    username = form_data.username.strip().lower()
+    password = form_data.password.strip()
+
+    user = USERS_DB.get(username)
+
+    if not user or password != user["password"]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
+
     token = create_access_token({"sub": user["email"], "role": user["role"]})
+
     return Token(
         access_token=token,
         token_type="bearer",
