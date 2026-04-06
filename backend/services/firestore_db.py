@@ -9,12 +9,22 @@ from backend.models.schemas import Candidate, JobDescription, CandidateScore
 import uuid
 from datetime import datetime
 
-
 def _get_db():
     """Returns Firestore client with correct database name."""
+    import os
+    import json
+
     if not firebase_admin._apps:
-        cred = credentials.Certificate("config/credentials.json")
+        firebase_creds = os.getenv("FIREBASE_CREDENTIALS")
+
+        if not firebase_creds:
+            raise ValueError("FIREBASE_CREDENTIALS not set")
+
+        cred_dict = json.loads(firebase_creds)
+
+        cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred)
+
     return firestore.client(database_id='ashitha-month2')
 
 

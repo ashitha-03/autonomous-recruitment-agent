@@ -57,27 +57,20 @@ def _parse_raw(raw: str) -> dict | None:
 
 
 def _try_vertex_ai(prompt: str) -> str | None:
-    client = genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project_id,
-        location=settings.vertex_ai_location,
-    )
-    for attempt in range(3):
-        try:
-            print(f"🔹 Vertex AI attempt {attempt + 1}")
-            response = client.models.generate_content(
-                model=settings.vertex_ai_model,
-                contents=prompt
-            )
-            print("✅ Vertex AI response received")
-            return response.text.strip()
-        except Exception as e:
-            print(f"⚠️ Vertex error: {str(e)[:80]}")
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                time.sleep(5)
-            else:
-                time.sleep(2)
-    return None
+    try:
+        print("🔹 Using Gemini API (fixed)")
+
+        genai.configure(api_key=settings.gemini_api_key)
+
+        model = genai.GenerativeModel("gemini-pro")
+
+        response = model.generate_content(prompt)
+
+        return response.text.strip()
+
+    except Exception as e:
+        print(f"⚠️ Gemini error: {str(e)[:80]}")
+        return None
 
 
 def _try_openrouter(prompt: str) -> str | None:
