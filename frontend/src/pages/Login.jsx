@@ -16,8 +16,9 @@ export default function Login({ onLogin }) {
 
     try {
       const form = new URLSearchParams();
-      form.append("username", email);
-      form.append("password", password);
+      form.append("username", email.trim().toLowerCase());
+form.append("password", password.trim());
+    
 
       const res = await fetch(
         `${process.env.REACT_APP_BACKEND_URL}/auth/login`,
