@@ -1,8 +1,6 @@
 import json
 from datetime import datetime, timedelta
 
-
-
 from backend.services.gmail import send_shortlist_email, send_rejection_email
 from backend.services.calendar import create_interview_event
 from backend.services.firestore_db import (
@@ -52,24 +50,33 @@ def run_outreach_for_jd(
             candidate_id = c.get("candidate_id")
             status = c.get("status")
 
+            print("👤 Processing candidate:", c.get("email"), "| status:", status)
+
             if status == "Shortlisted":
 
                 meet_link = ""
 
                 # ✅ 1. Schedule interview
                 if schedule_interviews:
+                    print("📅 Scheduling interview for:", c.get("email"))
+
                     interview_dt = datetime.now() + timedelta(days=2)
                     interview_dt = interview_dt.replace(hour=10, minute=0)
 
-                    event = create_interview_event(
-                        candidate_name=c["name"],
-                        candidate_email=c["email"],
-                        interviewer_email=settings.gmail_sender_email,
-                        role_title=jd.get("role_title", "the position"),
-                        start_datetime=interview_dt,
-                    )
+                    try:
+                        event = create_interview_event(
+                            candidate_name=c["name"],
+                            candidate_email=c["email"],
+                            interviewer_email=settings.gmail_sender_email,
+                            role_title=jd.get("role_title", "the position"),
+                            start_datetime=interview_dt,
+                        )
 
-                    meet_link = event.get("hangoutLink", "")
+                        meet_link = event.get("hangoutLink", "")
+                        print("✅ Calendar event created:", meet_link)
+
+                    except Exception as e:
+                        print("❌ Calendar failed:", str(e))
 
                 # ✅ 2. Store context for interaction
                 _outreach_context[candidate_id] = {
@@ -81,17 +88,24 @@ def run_outreach_for_jd(
 
                 # ✅ 3. Send email WITH candidate_id
                 if send_shortlist:
+                    print("📧 ABOUT TO SEND EMAIL TO:", c.get("email"))
+
                     slots = _generate_slots()
 
-                    send_shortlist_email(
-                        candidate_id=candidate_id,
-                        candidate_name=c["name"],
-                        candidate_email=c["email"],
-                        role_title=jd.get("role_title", "the position"),
-                        slots=slots,
-                        meet_link=meet_link,
-                         
-                    )
+                    try:
+                        send_shortlist_email(
+                            candidate_id=candidate_id,
+                            candidate_name=c["name"],
+                            candidate_email=c["email"],
+                            role_title=jd.get("role_title", "the position"),
+                            slots=slots,
+                            meet_link=meet_link,
+                        )
+
+                        print("✅ EMAIL FUNCTION CALLED")
+
+                    except Exception as e:
+                        print("❌ EMAIL FAILED:", str(e))
 
                 # ✅ 4. Update status
                 update_candidate_status(candidate_id, "Interview Scheduled")
@@ -99,7 +113,7 @@ def run_outreach_for_jd(
 
                 db = _get_db()
                 db.collection("candidates").document(candidate_id).update({
-                "interview_scheduled": True
+                    "interview_scheduled": True
                 })
 
                 results.append({
@@ -109,6 +123,8 @@ def run_outreach_for_jd(
                 })
 
             elif status == "Rejected" and send_rejection:
+                print("📧 Sending rejection to:", c.get("email"))
+
                 send_rejection_email(
                     candidate_name=c["name"],
                     candidate_email=c["email"],
@@ -122,4 +138,5 @@ def run_outreach_for_jd(
         }
 
     except Exception as e:
+        print("❌ OUTREACH ERROR:", str(e))
         return {"success": False, "message": str(e)}
