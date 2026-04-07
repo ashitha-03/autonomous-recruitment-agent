@@ -1,4 +1,4 @@
-import smtplib
+import requests
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from config.settings import settings
@@ -16,40 +16,32 @@ def _generate_slots():
     ]
 
 
+# ✅ NEW EMAIL SENDER (API BASED)
 def _send_email_smtp(to_email: str, subject: str, html_body: str):
     try:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = settings.gmail_sender_email
-        msg["To"] = to_email
-        msg["Subject"] = subject
+        print("📧 Sending via RESEND API...")
 
-        msg.attach(MIMEText(html_body, "html"))
-
-        print("📧 Connecting to SMTP...")
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-
-        server.login(
-            settings.gmail_sender_email,
-            settings.gmail_app_password
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {settings.resend_api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": settings.gmail_sender_email,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_body,
+            },
         )
 
-        server.sendmail(
-            settings.gmail_sender_email,
-            to_email,
-            msg.as_string()
-        )
-
-        server.quit()
-
-        print("✅ EMAIL SENT SUCCESSFULLY")
+        print("📧 RESPONSE:", response.status_code, response.text)
 
     except Exception as e:
-        print("❌ SMTP EMAIL FAILED:", str(e))
+        print("❌ EMAIL FAILED:", str(e))
 
 
-# ✅ SHORTLIST EMAIL
+# ✅ SHORTLIST EMAIL (UNCHANGED LOGIC)
 def send_shortlist_email(candidate_id, candidate_name, candidate_email, role_title, slots=None, meet_link=None, company_name="10xDS-Exponetial Digital Solutions"):
 
     if not slots:
@@ -100,7 +92,7 @@ def send_shortlist_email(candidate_id, candidate_name, candidate_email, role_tit
     _send_email_smtp(candidate_email, subject, body)
 
 
-# ✅ REJECTION EMAIL
+# ✅ REJECTION EMAIL (UNCHANGED)
 def send_rejection_email(candidate_name, candidate_email, role_title, company_name="Our Company"):
 
     subject = f"Application Update – {role_title} at {company_name}"
