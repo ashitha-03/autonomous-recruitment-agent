@@ -28,7 +28,7 @@ def _send_email_smtp(to_email: str, subject: str, html_body: str):
                 "Content-Type": "application/json",
             },
             json={
-                "from": settings.gmail_sender_email,
+                "from": "onboarding@resend.dev",
                 "to": [to_email],
                 "subject": subject,
                 "html": html_body,
@@ -37,8 +37,13 @@ def _send_email_smtp(to_email: str, subject: str, html_body: str):
 
         print("📧 RESPONSE:", response.status_code, response.text)
 
+        # ✅ FIXED INDENTATION
+        if response.status_code != 200:
+            raise Exception(f"Email failed: {response.text}")
+
     except Exception as e:
         print("❌ EMAIL FAILED:", str(e))
+        raise e   # 🔥 IMPORTANT (don’t remove)
 
 
 # ✅ SHORTLIST EMAIL (UNCHANGED LOGIC)
