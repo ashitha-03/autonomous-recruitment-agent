@@ -10,7 +10,9 @@ from typing import Optional
 class Settings(BaseSettings):
 
     # Google Cloud
+    
     google_cloud_project_id: str
+    gmail_app_password: Optional[str] = None
     google_application_credentials: Optional[str] = None
     google_credentials_json: Optional[str] = None
 
