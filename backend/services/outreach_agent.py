@@ -52,7 +52,11 @@ def run_outreach_for_jd(
 
             print("👤 Processing candidate:", c.get("email"), "| status:", status)
 
-            if status in ["Shortlisted", "Interview Scheduled"]:
+            if status == "Shortlisted":
+
+                if c.get("interview_scheduled"):
+                    print("⛔ Already scheduled, skipping:", c.get("email"))
+                    continue
 
                 meet_link = ""
 

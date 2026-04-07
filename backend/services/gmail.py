@@ -16,34 +16,29 @@ def _generate_slots():
     ]
 
 
-# ✅ NEW EMAIL SENDER (API BASED)
 def _send_email_smtp(to_email: str, subject: str, html_body: str):
     try:
-        print("📧 Sending via RESEND API...")
+        print("📧 Sending via Gmail SMTP...")
 
-        response = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {settings.resend_api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": "onboarding@resend.dev",
-                "to": [to_email],
-                "subject": subject,
-                "html": html_body,
-            },
-        )
+        import smtplib
 
-        print("📧 RESPONSE:", response.status_code, response.text)
+        msg = MIMEMultipart()
+        msg["From"] = settings.gmail_sender_email
+        msg["To"] = to_email
+        msg["Subject"] = subject
 
-        # ✅ FIXED INDENTATION
-        if response.status_code != 200:
-            raise Exception(f"Email failed: {response.text}")
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(settings.gmail_sender_email, settings.gmail_app_password)
+            server.send_message(msg)
+
+        print("📧 RESPONSE: 200 Email sent")
 
     except Exception as e:
         print("❌ EMAIL FAILED:", str(e))
-        raise e   # 🔥 IMPORTANT (don’t remove)
+        raise e
 
 
 # ✅ SHORTLIST EMAIL (UNCHANGED LOGIC)
