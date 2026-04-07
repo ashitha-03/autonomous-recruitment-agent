@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     gmail_app_password: Optional[str] = None
     google_application_credentials: Optional[str] = None
     google_credentials_json: Optional[str] = None
+    resend_api_key: Optional[str] = None
 
     vertex_ai_location: str = "us-central1"
     vertex_ai_model: str = "gemini-2.5-flash"
