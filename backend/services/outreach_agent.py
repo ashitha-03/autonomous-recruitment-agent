@@ -56,27 +56,27 @@ def run_outreach_for_jd(
 
                 meet_link = ""
 
-                # ✅ 1. Schedule interview
-                if schedule_interviews:
-                    print("📅 Scheduling interview for:", c.get("email"))
-
-                    interview_dt = datetime.now() + timedelta(days=2)
-                    interview_dt = interview_dt.replace(hour=10, minute=0)
-
-                    try:
-                        event = create_interview_event(
-                            candidate_name=c["name"],
-                            candidate_email=c["email"],
-                            interviewer_email=settings.gmail_sender_email,
-                            role_title=jd.get("role_title", "the position"),
-                            start_datetime=interview_dt,
-                        )
-
-                        meet_link = event.get("hangoutLink", "")
-                        print("✅ Calendar event created:", meet_link)
-
-                    except Exception as e:
-                        print("❌ Calendar failed:", str(e))
+                # ❌ DISABLED AUTO SCHEDULING (correct indentation fix)
+                # if schedule_interviews:
+                #     print("📅 Scheduling interview for:", c.get("email"))
+                #
+                #     interview_dt = datetime.now() + timedelta(days=2)
+                #     interview_dt = interview_dt.replace(hour=10, minute=0)
+                #
+                #     try:
+                #         event = create_interview_event(
+                #             candidate_name=c["name"],
+                #             candidate_email=c["email"],
+                #             interviewer_email=settings.gmail_sender_email,
+                #             role_title=jd.get("role_title", "the position"),
+                #             start_datetime=interview_dt,
+                #         )
+                #
+                #         meet_link = event.get("hangoutLink", "")
+                #         print("✅ Calendar event created:", meet_link)
+                #
+                #     except Exception as e:
+                #         print("❌ Calendar failed:", str(e))
 
                 # ✅ 2. Store context for interaction
                 _outreach_context[candidate_id] = {

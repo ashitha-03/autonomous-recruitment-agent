@@ -1,6 +1,5 @@
 """
 backend/models/schemas.py
-All Pydantic data models
 """
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List

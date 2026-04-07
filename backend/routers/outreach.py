@@ -80,6 +80,7 @@ async def send_single_email(req: SingleEmailRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
 # ─────────────────────────────────────────────────────────────
 # ✅ CANDIDATE RESPONSE
 # ─────────────────────────────────────────────────────────────
@@ -111,9 +112,20 @@ async def candidate_response(candidate_id: str, response: str, slot: str = None)
         # ── CONFIRM SLOT ─────────────────────────────
         if response == "confirm":
 
+            interview_time = datetime.now()
+
+            event = create_interview_event(
+                candidate_name=candidate["name"],
+                candidate_email=candidate["email"],
+                interviewer_email=settings.gmail_sender_email,
+                role_title="Interview",
+                start_datetime=interview_time,
+            )
+
             db.collection("candidates").document(candidate_id).update({
                 "status": "Confirmed",
-                "selected_slot": slot
+                "selected_slot": slot,
+                "calendar_event": event.get("htmlLink", "")
             })
 
             return {"message": f"Interview confirmed for {slot}"}
@@ -123,7 +135,7 @@ async def candidate_response(candidate_id: str, response: str, slot: str = None)
 
             db.collection("candidates").document(candidate_id).update({
                 "status": "Reschedule Requested",
-                "selected_slot": None   # ✅ clear slot
+                "selected_slot": None
             })
 
             return {"message": "Reschedule requested"}
@@ -133,7 +145,7 @@ async def candidate_response(candidate_id: str, response: str, slot: str = None)
 
             db.collection("candidates").document(candidate_id).update({
                 "status": "Declined",
-                "selected_slot": None   # ✅ clear slot
+                "selected_slot": None
             })
 
             return {"message": "Candidate declined"}
