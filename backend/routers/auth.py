@@ -1,9 +1,6 @@
-"""
-backend/routers/auth.py
-Simple login for Week 1 demo.
-"""
+import os
 from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -14,18 +11,28 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8
 
+# ✅ Required for get_current_user
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+# ✅ Credentials loaded from .env via pydantic settings
+def _build_users_db():
+    email = settings.hr_email.strip().lower()
+    return {
+        email: {
+            "email": email,
+            "name": "HR Manager",
+            "role": "hr",
+            "password": settings.hr_password.strip(),
+            "company": "10xDS",
+        }
+    }
 
-USERS_DB = {
-    "hr@company.com": {
-        "email": "hr@company.com",
-        "name": "HR Manager",
-        "role": "hr",
-        "password": "hr1234",
-        "company": "ABC",  
-    },
-}
+USERS_DB = _build_users_db()
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 
 class Token(BaseModel):
@@ -65,12 +72,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
 
 
 @router.post("/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    print("USERNAME RECEIVED:", form_data.username)
-    print("PASSWORD RECEIVED:", form_data.password)
-
-    username = form_data.username.strip().lower()
-    password = form_data.password.strip()
+async def login(data: LoginRequest):
+    username = data.email.strip().lower()
+    password = data.password.strip()
 
     user = USERS_DB.get(username)
 

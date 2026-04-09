@@ -19,12 +19,16 @@ def _get_db():
     import os
     import json
 
-    firebase_creds = os.getenv("FIREBASE_CREDENTIALS")
+    # ✅ FIX: Use local credentials file instead of ENV JSON
+    cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    print("CREDENTIAL PATH:", cred_path)
+    print("FILE EXISTS:", os.path.exists(cred_path) if cred_path else "NO PATH")
 
-    if not firebase_creds:
-        raise ValueError("FIREBASE_CREDENTIALS not set")
+    if not cred_path or not os.path.exists(cred_path):
+        raise ValueError("Firebase credentials file not found")
 
-    cred_dict = json.loads(firebase_creds)
+    with open(cred_path, "r") as f:
+        cred_dict = json.load(f)
 
     # Initialize Firebase Admin (only once)
     if not firebase_admin._apps:

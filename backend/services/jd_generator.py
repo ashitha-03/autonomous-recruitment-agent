@@ -6,7 +6,6 @@ import json
 import uuid
 import time
 from datetime import datetime
-import google.generativeai as genai
 from backend.models.schemas import JDGenerateRequest, JobDescription
 from config.settings import settings
 

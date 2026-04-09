@@ -1,18 +1,23 @@
-"""
-backend/main.py
-FastAPI entry
-"""
 import os
 import json
 from config.settings import settings
 
-if settings.google_credentials_json:
+# ✅ If running locally → use file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+local_cred_path = os.path.join(BASE_DIR, "config", "credentials.json")
+
+if os.path.exists(local_cred_path):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = local_cred_path
+
+# ✅ If deployed → use ENV JSON
+elif settings.google_credentials_json:
     creds_dict = json.loads(settings.google_credentials_json)
 
     with open("/tmp/gcp.json", "w") as f:
         json.dump(creds_dict, f)
 
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/gcp.json"
+
     
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

@@ -16,18 +16,27 @@ vertexai.init(
     location=settings.vertex_ai_location,
 )
 
-# ✅ Store candidate context for interaction
 _outreach_context = {}
 
 
-# ✅ dynamic slots
 def _generate_slots():
     base = datetime.now() + timedelta(days=1)
     return [
-        base.replace(hour=10, minute=0).strftime("%A %I:%M %p"),
-        base.replace(hour=14, minute=0).strftime("%A %I:%M %p"),
-        (base + timedelta(days=1)).replace(hour=11, minute=0).strftime("%A %I:%M %p"),
+        base.replace(hour=10, minute=0).strftime("%A, %d %B %Y at %I:%M %p"),
+        base.replace(hour=14, minute=0).strftime("%A, %d %B %Y at %I:%M %p"),
+        (base + timedelta(days=1)).replace(hour=11, minute=0).strftime("%A, %d %B %Y at %I:%M %p"),
     ]
+
+
+def _has_real_email(email: str) -> bool:
+    """Returns False for LinkedIn placeholder emails."""
+    if not email:
+        return False
+    if "noemail.com" in email:
+        return False
+    if email.startswith("linkedin_"):
+        return False
+    return True
 
 
 # ─────────────────────────────────────────────────────────────
@@ -45,102 +54,97 @@ def run_outreach_for_jd(
         jd = get_job_description(jd_id)
 
         results = []
+        skipped_linkedin = 0
+        skipped_already_sent = 0
 
         for c in candidates:
             candidate_id = c.get("candidate_id")
             status = c.get("status")
+            email = c.get("email", "")
 
-            print("👤 Processing candidate:", c.get("email"), "| status:", status)
+            print(f"👤 Processing: {email} | status: {status} | source: {c.get('source')}")
+
+            # ✅ SKIP LinkedIn candidates — they have no real email
+            if not _has_real_email(email):
+                print(f"⛔ Skipping LinkedIn candidate (no real email): {c.get('name')}")
+                skipped_linkedin += 1
+                continue
 
             if status == "Shortlisted":
 
-                if c.get("interview_scheduled"):
-                    print("⛔ Already scheduled, skipping:", c.get("email"))
+                # ✅ SKIP if already sent (email_sent flag OR interview_scheduled)
+                if c.get("email_sent") or c.get("interview_scheduled"):
+                    print(f"⛔ Already contacted, skipping: {email}")
+                    skipped_already_sent += 1
                     continue
 
                 meet_link = ""
 
-                # ❌ DISABLED AUTO SCHEDULING (correct indentation fix)
-                # if schedule_interviews:
-                #     print("📅 Scheduling interview for:", c.get("email"))
-                #
-                #     interview_dt = datetime.now() + timedelta(days=2)
-                #     interview_dt = interview_dt.replace(hour=10, minute=0)
-                #
-                #     try:
-                #         event = create_interview_event(
-                #             candidate_name=c["name"],
-                #             candidate_email=c["email"],
-                #             interviewer_email=settings.gmail_sender_email,
-                #             role_title=jd.get("role_title", "the position"),
-                #             start_datetime=interview_dt,
-                #         )
-                #
-                #         meet_link = event.get("hangoutLink", "")
-                #         print("✅ Calendar event created:", meet_link)
-                #
-                #     except Exception as e:
-                #         print("❌ Calendar failed:", str(e))
-
-                # ✅ 2. Store context for interaction
+                # ✅ Store context
                 _outreach_context[candidate_id] = {
                     "name": c["name"],
-                    "email": c["email"],
+                    "email": email,
                     "jd_id": jd_id,
-                    "meet_link": meet_link
+                    "meet_link": meet_link,
                 }
 
-                # ✅ 3. Send email WITH candidate_id
+                # ✅ Send shortlist email
                 if send_shortlist:
-                    print("📧 ABOUT TO SEND EMAIL TO:", c.get("email"))
-
+                    print(f"📧 Sending shortlist email to: {email}")
                     slots = _generate_slots()
 
                     try:
                         send_shortlist_email(
                             candidate_id=candidate_id,
                             candidate_name=c["name"],
-                            candidate_email=c["email"],
+                            candidate_email=email,
                             role_title=jd.get("role_title", "the position"),
                             slots=slots,
                             meet_link=meet_link,
                         )
 
-                        print("✅ EMAIL FUNCTION CALLED")
+                        # ✅ Mark as email_sent so it won't be sent again
+                        from backend.services.firestore_db import _get_db
+                        _get_db().collection("candidates").document(candidate_id).update({
+                            "email_sent": True
+                        })
+
+                        print(f"✅ Email sent to: {email}")
 
                     except Exception as e:
-                        print("❌ EMAIL FAILED:", str(e))
-
-                # ✅ 4. Update status
-                update_candidate_status(candidate_id, "Interview Scheduled")
-                from backend.services.firestore_db import _get_db
-
-                db = _get_db()
-                db.collection("candidates").document(candidate_id).update({
-                    "interview_scheduled": True
-                })
+                        print(f"❌ Email failed for {email}: {str(e)}")
 
                 results.append({
                     "name": c["name"],
-                    "email": c["email"],
-                    "meet_link": meet_link
+                    "email": email,
+                    "meet_link": meet_link,
                 })
 
             elif status == "Rejected" and send_rejection:
-                print("📧 Sending rejection to:", c.get("email"))
 
-                send_rejection_email(
-                    candidate_name=c["name"],
-                    candidate_email=c["email"],
-                    role_title=jd.get("role_title", "the position"),
-                )
+                # ✅ Skip fake emails for rejection too
+                print(f"📧 Sending rejection to: {email}")
+                try:
+                    send_rejection_email(
+                        candidate_name=c["name"],
+                        candidate_email=email,
+                        role_title=jd.get("role_title", "the position"),
+                    )
+                except Exception as e:
+                    print(f"❌ Rejection email failed: {str(e)}")
+
+        summary = f"✅ Outreach completed: {len(results)} emails sent"
+        if skipped_already_sent:
+            summary += f", {skipped_already_sent} already contacted (skipped)"
+        if skipped_linkedin:
+            summary += f", {skipped_linkedin} LinkedIn candidates skipped (no real email)"
 
         return {
             "success": True,
-            "message": f"✅ Outreach completed for {len(results)} candidates",
-            "details": results
+            "message": summary,
+            "details": results,
         }
 
     except Exception as e:
-        print("❌ OUTREACH ERROR:", str(e))
+        print(f"❌ OUTREACH ERROR: {str(e)}")
         return {"success": False, "message": str(e)}

@@ -19,7 +19,7 @@ def create_interview_event(
     description: str = "",
 ) -> dict:
     """
-    Creates OFFLINE interview event (NO Google Meet)
+    Creates interview event WITH Google Meet link.
     """
 
     service = _get_calendar_service()
@@ -27,7 +27,7 @@ def create_interview_event(
 
     event = {
         "summary": f"Interview: {candidate_name} – {role_title}",
-        "description": description or f"Offline interview for {role_title}",
+        "description": description or f"Interview for {role_title} position.\nCandidate: {candidate_name}",
         "start": {
             "dateTime": start_datetime.isoformat(),
             "timeZone": "Asia/Kolkata",
@@ -41,16 +41,23 @@ def create_interview_event(
             {"email": interviewer_email},
         ],
 
-        # ✅ THIS IS THE IMPORTANT PART
-        "location": f"{role_title} Interview – {candidate_name} | Office - Kochi",
-
-        # ❌ REMOVED conferenceData (no Meet link)
+        # ✅ Google Meet link
+        "conferenceData": {
+            "createRequest": {
+                "requestId": f"interview-{candidate_name}-{start_datetime.strftime('%Y%m%d%H%M')}",
+                "conferenceSolutionKey": {"type": "hangoutsMeet"},
+            }
+        },
     }
 
     created_event = service.events().insert(
         calendarId="primary",
         body=event,
-        sendUpdates="all",   # sends email invite
+        conferenceDataVersion=1,  # ✅ Required for Meet link
+        sendUpdates="all",         # ✅ Sends email invite to all attendees
     ).execute()
+
+    print(f"✅ Calendar event created: {created_event.get('htmlLink')}")
+    print(f"🎥 Meet link: {created_event.get('hangoutLink')}")
 
     return created_event

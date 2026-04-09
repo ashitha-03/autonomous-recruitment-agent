@@ -1,7 +1,11 @@
 // frontend/src/services/api.js
 import axios from "axios";
 
-const API = axios.create({ baseURL: process.env.REACT_APP_BACKEND_URL });
+// ✅ FIX: Use REACT_APP_API_URL (set this in Vercel env vars to your Render URL)
+// For local dev: create frontend/.env.local with REACT_APP_API_URL=http://127.0.0.1:8000
+const API = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || "http://127.0.0.1:8000",
+});
 
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -9,9 +13,18 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
-export const login = (email, password) =>
-  API.post("/auth/login", { email, password });
+export const login = async (email, password) => {
+  try {
+    const res = await API.post("/auth/login", { email, password });
+    return res.data;
+  } catch (err) {
+    if (err.response) {
+      throw err.response.data;
+    } else {
+      throw { detail: "Server not reachable" };
+    }
+  }
+};
 
 // ── Job Descriptions ──────────────────────────────────────────────────────────
 export const generateJD = (data) => API.post("/jd/generate", data);

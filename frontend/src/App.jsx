@@ -1,10 +1,11 @@
 // frontend/src/App.jsx
 import { useState, useEffect, useRef } from "react";
 import Login from "./pages/Login";
-import { generateJD, listJDs, uploadResumes, getCandidates, scrapeLinkedIn, runOutreachAgent } from "./services/api";
+import Confirmed from "./pages/Confirmed";
+import { generateJD, listJDs, uploadResumes, getCandidates, scrapeLinkedIn, runOutreachAgent, sendSingleEmail } from "./services/api";
 import axios from "axios";
 
-const API = axios.create({ baseURL: process.env.REACT_APP_BACKEND_URL });
+const API = axios.create({ baseURL: process.env.REACT_APP_API_URL || "http://127.0.0.1:8000" });
 
 const TABS = ["Job Descriptions", "Upload Resumes", "Candidates", "LinkedIn"];
 
@@ -41,7 +42,7 @@ const JDCard = ({ jd, onDelete, onEdit, onUploadResumes }) => {
 
   const downloadPDF = () => {
     const link = document.createElement("a");
-    link.href = `${process.env.REACT_APP_BACKEND_URL}/jd/${jd.jd_id}/pdf`;
+    link.href = `${process.env.REACT_APP_API_URL || "http://127.0.0.1:8000"}/jd/${jd.jd_id}/pdf`;
     link.download = `${jd.role_title.replace(/ /g, "_")}_JD.pdf`;
     link.click();
   };
@@ -189,6 +190,7 @@ export default function App() {
   const [selectedCandidateJdId, setSelectedCandidateJdId] = useState("");
   const [outreachLoading, setOutreachLoading] = useState(false);
   const [outreachResult, setOutreachResult] = useState(null);
+  const [sendingEmail, setSendingEmail] = useState({});  // {candidate_id: 'sending'|'sent'|'error'}
 
   const [jdForm, setJdForm] = useState({
     role_title: "", department: "", experience_years: 3,
@@ -208,6 +210,21 @@ useEffect(() => {
 
   fetchJDs(); // 🔥 always fetch on load
 }, []);
+
+  // ✅ Send email to individual candidate
+  const handleSendIndividualEmail = async (candidate, emailType) => {
+    const key = `${candidate.candidate_id}_${emailType}`;
+    setSendingEmail(prev => ({ ...prev, [key]: "sending" }));
+    try {
+      await sendSingleEmail(candidate.candidate_id, candidate.jd_id, emailType);
+      setSendingEmail(prev => ({ ...prev, [key]: "sent" }));
+      // Refresh candidates
+      await handleLoadCandidates(selectedCandidateJdId);
+    } catch (e) {
+      setSendingEmail(prev => ({ ...prev, [key]: "error" }));
+      notify("❌ Email failed: " + (e?.detail || e?.message || "Unknown error"), "error");
+    }
+  };
 
   const notify = (text, type = "success") => { setMsg({ text, type }); setTimeout(() => setMsg({ text: "", type: "" }), 4000); };
 
@@ -295,9 +312,16 @@ useEffect(() => {
 
   const handleRunOutreach = async () => {
     if (!selectedCandidateJdId) return notify("Select a JD first!", "error");
-    const shortlisted = candidates.filter(c => c.status === "Shortlisted");
-    if (shortlisted.length === 0) return notify("No shortlisted candidates to contact!", "error");
-    if (!window.confirm(`Send emails + schedule interviews for ${shortlisted.length} shortlisted candidate(s)?`)) return;
+    // ✅ Only real email candidates (exclude LinkedIn fake emails)
+    const shortlisted = candidates.filter(c =>
+      c.status === "Shortlisted" &&
+      c.email &&
+      !c.email.includes("noemail.com") &&
+      !c.email.startsWith("linkedin_")
+    );
+    const alreadySent = candidates.filter(c => c.status === "Shortlisted" && c.email_sent).length;
+    if (shortlisted.length === 0) return notify("No shortlisted candidates with real emails to contact!", "error");
+    if (!window.confirm(`Send emails to ${shortlisted.length} shortlisted candidate(s)?${alreadySent > 0 ? ` (${alreadySent} already contacted will be skipped)` : ""}`)) return;
     setOutreachLoading(true);
     setOutreachResult(null);
     try {
@@ -364,6 +388,9 @@ const handleUpload = async () => {
     row3: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 },
     toast: { position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 24px", borderRadius: 8, zIndex: 999, fontSize: 13, whiteSpace: "nowrap", boxShadow: "0 4px 20px rgba(0,0,0,0.2)" },
   };
+
+  // ✅ Candidate confirmation page — no login needed
+  if (window.location.pathname === "/confirmed") return <Confirmed />;
 
   if (!authChecked) return null;
   if (!user) return <Login onLogin={handleLogin} />;
@@ -626,24 +653,7 @@ const handleUpload = async () => {
                 </select>
               </div>
 
-              {/* Outreach Button */}
-              {selectedCandidateJdId && candidates.filter(c => c.status === "Shortlisted").length > 0 && (
-                <div style={{ marginTop: 16, padding: 16, background: "#f0fdf4", borderRadius: 10, border: "1px solid #86efac", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#15803d" }}>🤖 Automated Outreach</div>
-                    <div style={{ fontSize: 12, color: "#16a34a", marginTop: 2 }}>
-                      {candidates.filter(c => c.status === "Shortlisted").length} shortlisted candidate(s) — Agent will send emails + schedule Google Meet interviews
-                    </div>
-                  </div>
-                  <button
-                    style={{ background: outreachLoading ? "#94a3b8" : "#16a34a", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 600, cursor: outreachLoading ? "not-allowed" : "pointer", fontSize: 13, whiteSpace: "nowrap" }}
-                    onClick={handleRunOutreach}
-                    disabled={outreachLoading}
-                  >
-                    {outreachLoading ? "🤖 Agent running…" : "📧 Run Outreach Agent"}
-                  </button>
-                </div>
-              )}
+
 
               {/* Outreach Result */}
               {outreachResult && (
@@ -716,7 +726,7 @@ const handleUpload = async () => {
 
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: 700, fontSize: 15, color: "#0f1e3c" }}>{c.name}</div>
-                              <div style={{ fontSize: 12, color: "#64748b" }}>{c.email} {c.years_experience ? `• ${c.years_experience}y exp` : ""}</div>
+                              <div style={{ fontSize: 12, color: "#64748b" }}>{c.email && !c.email.includes("noemail") ? c.email : (c.source === "LinkedIn" ? "🔗 LinkedIn Candidate" : "")} {c.years_experience ? `• ${c.years_experience}y exp` : ""}</div>
                             </div>
 
                             <div style={{ width: 120, flexShrink: 0 }}>
@@ -743,7 +753,7 @@ const handleUpload = async () => {
   <div style={{ padding: "16px 20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
 
     {/* 🔥 SELECTED SLOT (NEW) */}
-    {c.selected_slot && c.status === "Confirmed" && (
+    {c.selected_slot && (c.status === "Interview Scheduled" || c.status === "Confirmed") && (
       <div style={{
         marginBottom: 12,
         padding: "10px 14px",
@@ -755,6 +765,14 @@ const handleUpload = async () => {
         fontWeight: 600
       }}>
         📅 <strong>Selected Slot:</strong> {c.selected_slot}
+        {c.meet_link && (
+          <div style={{ marginTop: 6 }}>
+            🎥 <strong>Meet Link:</strong>{" "}
+            <a href={c.meet_link} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 600 }}>
+              Join Meeting →
+            </a>
+          </div>
+        )}
       </div>
     )}
 
@@ -808,18 +826,88 @@ const handleUpload = async () => {
     </div>
 
     {/* AI Assessment */}
-    {c.rejection_reason && (
-      <div style={{
-        background: "#fff",
-        borderRadius: 8,
-        padding: "10px 14px",
-        fontSize: 13,
-        color: "#374151",
-        border: "1px solid #e2e8f0"
-      }}>
-        💡 <strong>AI Assessment:</strong> {c.rejection_reason}
+    {c.ai_summary && (
+      <div style={{ background: "#fff", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#374151", border: "1px solid #e2e8f0", marginBottom: 12 }}>
+        💡 <strong>AI Assessment:</strong> {c.ai_summary}
       </div>
     )}
+
+    {/* ✅ ACTION BUTTONS — per candidate */}
+    <div style={{ marginTop: 12, padding: "12px 16px", background: "#f1f5f9", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+
+      {/* LinkedIn candidate — no email, show profile link */}
+      {c.source === "LinkedIn" && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 13, color: "#64748b" }}>🔗 LinkedIn candidate — reach out directly</span>
+          {c.linkedin_url && (
+            <a href={c.linkedin_url} target="_blank" rel="noreferrer"
+              style={{ background: "#0a66c2", color: "#fff", padding: "7px 16px", borderRadius: 6, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+              View LinkedIn Profile →
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Resume candidate — individual email buttons */}
+      {c.source !== "LinkedIn" && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 12, color: "#64748b", marginRight: 4 }}>Actions:</span>
+
+          {/* SHORTLISTED — Send Outreach */}
+          {c.status === "Shortlisted" && (() => {
+            const key = `${c.candidate_id}_shortlist`;
+            const state = sendingEmail[key];
+            if (c.email_sent || c.status === "Interview Scheduled") {
+              return <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>✅ Outreach Email Sent</span>;
+            }
+            return (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleSendIndividualEmail(c, "shortlist"); }}
+                disabled={state === "sending"}
+                style={{ background: state === "sent" ? "#16a34a" : state === "error" ? "#dc2626" : "#0f1e3c", color: "#fff", border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                {state === "sending" ? "📧 Sending…" : state === "sent" ? "✅ Sent!" : state === "error" ? "❌ Failed — Retry" : "📧 Send Shortlist Email"}
+              </button>
+            );
+          })()}
+
+          {/* MAYBE — Send to Review */}
+          {c.recommendation === "Maybe" && c.status !== "Shortlisted" && (() => {
+            const key = `${c.candidate_id}_review`;
+            const state = sendingEmail[key];
+            return (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleSendIndividualEmail(c, "shortlist"); }}
+                disabled={state === "sending"}
+                style={{ background: state === "sent" ? "#16a34a" : "#d97706", color: "#fff", border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                {state === "sending" ? "📤 Sending…" : state === "sent" ? "✅ Sent for Review!" : "🤔 Send to Review"}
+              </button>
+            );
+          })()}
+
+          {/* REJECT button — shown for Rejected candidates */}
+          {(c.recommendation === "Reject" || c.status === "Rejected") && (() => {
+            const key = `${c.candidate_id}_rejection`;
+            const state = sendingEmail[key];
+            return (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleSendIndividualEmail(c, "rejection"); }}
+                disabled={state === "sending"}
+                style={{ background: state === "sent" ? "#6b7280" : state === "error" ? "#dc2626" : "#fee2e2", color: state === "sent" || state === "error" ? "#fff" : "#dc2626", border: "1px solid #fca5a5", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                {state === "sending" ? "📧 Sending…" : state === "sent" ? "✅ Rejection Sent" : "❌ Send Rejection Email"}
+              </button>
+            );
+          })()}
+
+          {/* Interview Scheduled — show slot info */}
+          {c.status === "Interview Scheduled" && (
+            <span style={{ fontSize: 12, color: "#1d4ed8", fontWeight: 600 }}>
+              📅 Interview confirmed — {c.selected_slot}
+            </span>
+          )}
+
+        </div>
+      )}
+    </div>
 
   </div>
 )}
@@ -882,7 +970,7 @@ notify(`✅ Scraped and scored ${r.data.processed} LinkedIn profiles!`);
                 <h3 style={{ ...s.cardTitle, fontSize: 15 }}>LinkedIn Results ({linkedInResults.length})</h3>
                 {linkedInResults.map((r, i) => (
                   <div key={i} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 16, marginBottom: 10, background: r.status === "Shortlisted" ? "#f0fdf4" : "#fff", borderLeft: `4px solid ${r.recommendation === "Shortlist" ? "#16a34a" : r.recommendation === "Maybe" ? "#d97706" : "#dc2626"}` }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 15 }}>{r.name}</div>
                         <div style={{ fontSize: 12, color: "#64748b" }}>{r.current_title}</div>
@@ -890,6 +978,41 @@ notify(`✅ Scraped and scored ${r.data.processed} LinkedIn profiles!`);
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>{badge(r.score)}{statusChip(r.status)}</div>
                     </div>
+
+                    {/* Skills Analysis */}
+                    {(r.matched_skills?.length > 0 || r.missing_skills?.length > 0) && (
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Skills Analysis:</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                          {r.matched_skills?.map(sk => skillTag(sk, true))}
+                          {r.missing_skills?.map(sk => skillTag(sk, false))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI Explanation */}
+                    {r.ai_summary && (
+                      <div style={{ fontSize: 13, color: "#374151", background: "#f8fafc", padding: "8px 12px", borderRadius: 8, borderLeft: "3px solid #94a3b8", marginBottom: 10 }}>
+                        💡 <strong>AI Assessment:</strong> {r.ai_summary}
+                      </div>
+                    )}
+
+                    {/* Contact button for shortlisted LinkedIn candidates */}
+                    {r.status === "Shortlisted" && r.linkedin_url && (
+                      <div style={{ marginTop: 8, padding: "10px 14px", background: "#eff6ff", borderRadius: 8, border: "1px solid #93c5fd", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 13, color: "#1d4ed8", fontWeight: 600 }}>
+                          🎯 Shortlisted! Reach out manually on LinkedIn
+                        </span>
+                        <a
+                          href={r.linkedin_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ background: "#0a66c2", color: "#fff", padding: "6px 14px", borderRadius: 6, fontSize: 13, fontWeight: 600, textDecoration: "none" }}
+                        >
+                          Contact on LinkedIn →
+                        </a>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

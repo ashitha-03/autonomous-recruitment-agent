@@ -19,16 +19,16 @@ export default function Login({ onLogin }) {
       form.append("password", password.trim());
 
       const res = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: form,
-        }
-      );
-
+  `${process.env.REACT_APP_API_URL || "http://127.0.0.1:8000"}/auth/login`,
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ 
+      email: email.trim().toLowerCase(), 
+      password: password.trim() 
+    }),
+  }
+);
       const data = await res.json();
 
       if (!res.ok) {
