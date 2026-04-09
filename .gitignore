@@ -3,7 +3,7 @@
 config/credentials.json
 config/oauth_client.json
 config/token.pickle
-scripts/generate_token.py
+
 
 __pycache__/
 *.pyc
